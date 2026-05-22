@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sql-injection-scanner"
-version = "1.0.1"
+version = "1.0.3"
 description = "A comprehensive scanner for detecting SQL injection vulnerabilities in Python code"
 readme = "README.md"
 requires-python = ">=3.6"

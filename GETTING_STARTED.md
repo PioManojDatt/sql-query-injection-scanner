@@ -22,7 +22,7 @@ A fully structured Python package with:
 
 ```bash
 # Navigate to this directory
-cd sql_injection_scanner_pkg
+cd sql_injection_scanner
 
 # Create virtual environment
 python -m venv venv
@@ -41,14 +41,14 @@ pip install -e .
 
 ```bash
 # Test CLI
-sql-injection-scanner --help
-sql-injection-scanner --version
+python -m sql_injection_scanner.cli --help
+python -m sql_injection_scanner.cli --version
 
 # Test Python API
 python -c "from sql_injection_scanner import SQLInjectionScanner; print('✓ Works!')"
 
 # Scan a directory
-sql-injection-scanner .
+python -m sql_injection_scanner.cli .
 ```
 
 ### 3. Create Distribution
@@ -82,7 +82,7 @@ Read these files in order:
 ## 🔑 Key Files
 
 ```
-sql_injection_scanner_pkg/
+sql_injection_scanner/
 ├── sql_injection_scanner/           # The actual package
 │   ├── __init__.py                  # Version & exports
 │   ├── scanner.py                   # Main scanner class
@@ -109,7 +109,7 @@ Before deploying to PyPI, verify:
 
 - [ ] You've read `INSTRUCTIONS.md` completely
 - [ ] Virtual environment is created and activated
-- [ ] You can run `sql-injection-scanner --help` locally
+- [ ] You can run `python -m sql_injection_scanner.cli --help` locally
 - [ ] You have a PyPI account at https://pypi.org/account/register/
 - [ ] You have a TestPyPI account at https://test.pypi.org/account/register/
 - [ ] You've generated API tokens (not using passwords)
@@ -118,6 +118,22 @@ Before deploying to PyPI, verify:
 - [ ] You've updated `CHANGELOG.md`
 
 ## 🛠️ Common Tasks
+
+### Run the Scanner
+
+```bash
+# Scan current directory
+python -m sql_injection_scanner.cli
+
+# Scan specific directory
+python -m sql_injection_scanner.cli /path/to/project
+
+# Custom output file
+python -m sql_injection_scanner.cli . -o report.xlsx
+
+# Show help
+python -m sql_injection_scanner.cli --help
+```
 
 ### Install Development Dependencies
 
@@ -217,11 +233,11 @@ When bumping versions, update:
 
 ### To Get Started Right Now:
 ```bash
-cd sql_injection_scanner_pkg
+cd sql_injection_scanner
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate
 pip install -e ".[dev]"
-sql-injection-scanner --help
+python -m sql_injection_scanner.cli --help
 ```
 
 ### To Deploy to PyPI:

@@ -7,7 +7,7 @@ Your SQL Injection Scanner has been transformed into a **complete, production-re
 ### 📦 Complete Package Structure
 
 ```
-sql_injection_scanner_pkg/
+sql_injection_scanner/
 │
 ├── 📁 sql_injection_scanner/          Main package (Python module)
 │   ├── __init__.py                    Package initialization & version
@@ -50,7 +50,7 @@ sql_injection_scanner_pkg/
 
 ### Step 1: Local Installation (Verify It Works)
 ```bash
-cd sql_injection_scanner_pkg
+cd sql_injection_scanner
 python -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate
 pip install -e ".[dev]"
@@ -204,7 +204,7 @@ pip install sql-injection-scanner
 
 ### Quick Verification:
 ```bash
-cd sql_injection_scanner_pkg
+cd sql_injection_scanner
 
 # 1. Setup
 python -m venv venv

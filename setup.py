@@ -10,7 +10,7 @@ long_description = readme_file.read_text(encoding="utf-8") if readme_file.exists
 
 setup(
     name="sql-injection-scanner",
-    version="1.0.1",
+    version="1.0.3",
     description="A comprehensive scanner for detecting SQL injection vulnerabilities in Python code",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -35,11 +35,6 @@ setup(
             "black>=21.0",
             "flake8>=3.9.0",
             "mypy>=0.910",
-        ],
-    },
-    entry_points={
-        "console_scripts": [
-            "sql-injection-scanner=sql_injection_scanner.cli:main",
         ],
     },
     classifiers=[

@@ -38,10 +38,10 @@ class SQLInjectionScanner:
     
     # Patterns that indicate potential SQL injection vulnerabilities
     VULNERABLE_PATTERNS = [
-        (r'f["\'].*?(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE).*?\{.*?\}.*?["\']', 'f-string with SQL'),
-        (r'["\'].*?(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER).*?["\']\s*\+\s*', 'String concatenation in SQL'),
-        (r'["\'].*?(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER).*?["\']\.format\(', '.format() with SQL'),
-        (r'["\'].*?(?:SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER).*?["\']\s*%\s*', '% formatting in SQL'),
+        (r'f["\'].*?(?:SELECT|INSERT|UPDATE\s+|DELETE\s+FROM|DROP\s+|CREATE\s+|ALTER\s+|EXEC|EXECUTE).*?\{.*?\}.*?["\']', 'f-string with SQL'),
+        (r'["\'].*?(?:SELECT|INSERT|UPDATE\s+|DELETE\s+FROM|DROP\s+|CREATE\s+|ALTER\s+).*?["\']\s*\+\s*', 'String concatenation in SQL'),
+        (r'["\'].*?(?:SELECT|INSERT|UPDATE\s+|DELETE\s+FROM|DROP\s+|CREATE\s+|ALTER\s+).*?["\']\.format\(', '.format() with SQL'),
+        (r'["\'].*?(?:SELECT|INSERT|UPDATE\s+|DELETE\s+FROM|DROP\s+|CREATE\s+|ALTER\s+).*?["\']\s*%\s*', '% formatting in SQL'),
     ]
     
     # Patterns that indicate safe parameterized queries
@@ -101,6 +101,62 @@ class SQLInjectionScanner:
                 return True
         return False
 
+    def _is_logging_or_print_statement(self, line: str) -> bool:
+        """
+        Check if a line is a logging or print statement.
+        
+        Args:
+            line (str): The line of code to check.
+            
+        Returns:
+            bool: True if the line is a logging or print statement.
+        """
+        logging_patterns = [
+            r'print\s*\(',
+            r'\blog\s*\.',
+            r'\blogger\s*\.',
+            r'\blogging\s*\.',
+            r'\.info\s*\(',
+            r'\.debug\s*\(',
+            r'\.error\s*\(',
+            r'\.warning\s*\(',
+            r'\.exception\s*\(',
+            r'\.trace\s*\(',
+            r'"error"\s*:',
+            r"'error'\s*:",
+        ]
+        for pattern in logging_patterns:
+            if re.search(pattern, line, re.IGNORECASE):
+                return True
+        return False
+
+    def _is_likely_sql_construction(self, line: str) -> bool:
+        """
+        Check if a line looks like SQL query construction or execution.
+        
+        Args:
+            line (str): The line of code to check.
+            
+        Returns:
+            bool: True if the line appears to be constructing or executing a SQL query.
+        """
+        sql_construction_patterns = [
+            r'\bquery\s*=',
+            r'\bsql\s*=',
+            r'\.execute\s*\(',
+            r'\.executemany\s*\(',
+            r'\.query\s*\(',
+            r'\bcursor\s*\.',
+            r'\bdb\s*\.',
+            r'\bdatabase\s*\.',
+            r'\bconn\s*\.',
+            r'\bconnection\s*\.',
+        ]
+        for pattern in sql_construction_patterns:
+            if re.search(pattern, line, re.IGNORECASE):
+                return True
+        return False
+
     def _calculate_risk_level(self, line: str) -> str:
         """
         Calculate the risk level of a potential SQL injection vulnerability.
@@ -112,15 +168,17 @@ class SQLInjectionScanner:
             str: Risk level ('HIGH', 'MEDIUM', or 'LOW').
         """
         if 'f"' in line or "f'" in line:
+            # Check if it's actually a SQL context (contains SQL keywords with word boundaries)
+            if re.search(r'\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE)\b', line, re.IGNORECASE):
+                return 'HIGH'
+        elif '+' in line and re.search(r'\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE)\b', line, re.IGNORECASE):
             return 'HIGH'
-        elif '+' in line and any(kw in line.upper() for kw in self.SQL_KEYWORDS):
-            return 'HIGH'
-        elif '.format(' in line:
+        elif '.format(' in line and re.search(r'\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE)\b', line, re.IGNORECASE):
             return 'MEDIUM'
-        elif '%' in line and any(kw in line.upper() for kw in self.SQL_KEYWORDS):
+        elif '%' in line and re.search(r'\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|EXECUTE)\b', line, re.IGNORECASE):
             return 'MEDIUM'
-        else:
-            return 'LOW'
+        
+        return 'LOW'
 
     def detect_sql_injection(self, file_path: Path, content: str) -> List[Dict]:
         """
@@ -141,8 +199,16 @@ class SQLInjectionScanner:
             if line.strip().startswith('#'):
                 continue
             
+            # Skip logging and print statements
+            if self._is_logging_or_print_statement(line):
+                continue
+            
             # Check if line contains SQL keywords
             if not any(keyword in line.upper() for keyword in self.SQL_KEYWORDS):
+                continue
+            
+            # Check if this line looks like SQL construction/execution
+            if not self._is_likely_sql_construction(line):
                 continue
             
             # Skip if it's a safe parameterized query
@@ -162,28 +228,6 @@ class SQLInjectionScanner:
                         'risk_level': risk_level
                     })
                     break
-            
-            # Check for obvious unsafe patterns
-            unsafe_patterns = [
-                (r'f["\'].*?\{.*?\}.*?["\']', 'f-string SQL construction'),
-                (r'["\'].*?["\']\s*\+\s*(?!.*\(.+\))', 'Unsafe string concatenation'),
-            ]
-            
-            for pattern, description in unsafe_patterns:
-                if re.search(pattern, line):
-                    # Double-check it's not a false positive
-                    if 'execute' in line.lower() or 'query' in line.lower() or any(kw in line.upper() for kw in self.SQL_KEYWORDS):
-                        if not any(finding['line_number'] == line_num for finding in findings):
-                            risk_level = self._calculate_risk_level(line)
-                            findings.append({
-                                'file_path': str(file_path.relative_to(self.root_dir)),
-                                'module_name': file_path.stem,
-                                'line_number': line_num,
-                                'code': line.strip(),
-                                'pattern': description,
-                                'risk_level': risk_level
-                            })
-                            break
         
         return findings
 

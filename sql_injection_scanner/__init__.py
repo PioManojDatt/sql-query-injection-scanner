@@ -18,7 +18,7 @@ Example:
     >>> scanner.generate_excel_report('report.xlsx')
 """
 
-__version__ = "1.0.1"
+__version__ = "1.0.3"
 __author__ = "PioManojDatt"
 __email__ = "contact@PioManojDatt.com"
 __url__ = "https://github.com/PioManojDatt/sql-query-injection-scanner"
